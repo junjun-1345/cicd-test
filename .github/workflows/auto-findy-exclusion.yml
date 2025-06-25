@@ -1,0 +1,56 @@
+name: Auto Add Findy Exclusion Label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+
+jobs:
+  add-findy-exclusion-label:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Check if PR targets main branch
+        if: github.event.pull_request.base.ref == 'main'
+        run: echo "PR targets main branch, adding Findy exclusion label"
+
+      - name: Add Findy exclusion label
+        if: github.event.pull_request.base.ref == 'main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labelName = 'findy除外'; // ラベル名を適宜変更してください
+
+            try {
+              // 既にラベルが付いているかチェック
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              
+              const hasLabel = labels.some(label => label.name === labelName);
+              
+              if (!hasLabel) {
+                // ラベルを追加
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: [labelName]
+                });
+                
+                console.log(`Added ${labelName} label to PR #${context.issue.number}`);
+              } else {
+                console.log(`PR #${context.issue.number} already has ${labelName} label`);
+              }
+            } catch (error) {
+              console.error('Error adding label:', error);
+
+            }
